@@ -22,6 +22,7 @@ Supported features:
 - Supports operations with complex numbers
 - support of the context menu in WOX, allowing it to show integer values in HEX, BINARY, floating points with 
   engineering notation and complex numbers with magnitude and angle of the corresponding vector.
+- Storage of variables on a temporary file.
 
 
 ***Protip***: use ```=``` sign to filter any unneccesary results:
@@ -40,11 +41,6 @@ Install ```scipy``` to enable advanced calculations:
 ```
 pip install scipy
 ```
-
-## Security
-Plugin uses ```eval``` function which opens up a potential vector for injection attacks.
-
-Be careful when entering untrusted input.
 
 ## Notes
 The | operator is used by wox on the searches. So it can be used for calculations.

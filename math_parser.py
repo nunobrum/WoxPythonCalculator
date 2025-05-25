@@ -1,14 +1,25 @@
 import re
 import math
+import time
 from typing import Union, List
 
+def log(text):
+    with open(r"C:\sandbox\WoxPythonCalculator\log.txt", 'a') as f:
+        f.write(time.asctime() + ':' + text + '\n')
 
-def pct(x):
-    return x/100
 
-
-def apply_pct(x, y):
-    return x * (1 + y / 100)
+def number(x):
+    try:
+        y = int(x)
+    except ValueError:
+        try:
+            y = float(x)
+        except ValueError:
+            try:
+                y = complex(x)
+            except ValueError:
+                return x
+    return y
 
 
 class Node:
@@ -40,13 +51,99 @@ class Node:
             else:
                 return f"({self.operands[0]}**{self.operands[1]})"
         if self.op == "apply_pct" and len(self.operands) == 2:
-            y = str(self.operands[1])
-            if y.startswith('-'):
-                return f"({self.operands[0]} * (1 - {y[1:]}))"
+            if self.operands[1] < 0:
+                return "({0} * (1 - {1}/100))".format(*self.operands)
             else:
-                return "({0} * (1 + {1}))".format(*self.operands)
+                return "({0} * (1 + {1}/100))".format(*self.operands)
 
         return f"({f' {self.op} '.join(map(str, self.operands))})"
+
+    def eval(self, env: dict):
+        operands = []
+        for x in self.operands:
+            if isinstance(x, str) and x in env:
+                operands.append(env[x])
+            elif isinstance(x, Node):
+                res = x.eval(env)
+                if isinstance(res, list):
+                    operands.extend(res)
+                else:
+                    operands.append(res)
+            else:
+                operands.append(x)
+
+        if self.op in Parser.FUNCTIONS:
+            return Parser.FUNCTIONS[self.op](*operands)  # These are functions
+        if len(operands) == 1:
+            a = operands[0]
+            if self.op == '-':
+                return -a
+            if self.op == 'pct':
+                return a/100
+
+        if self.op == '+':
+            log(str(operands))
+            return sum(operands)
+        if self.op == '-':
+            a = operands[0]
+            for x in operands[1:]:
+                a -= x
+            return a
+        if self.op == '*':
+            a = 1
+            for x in operands:
+                a *= x
+            return a
+        if self.op == '/':
+            a = operands[0]
+            for x in operands[1:]:
+                a /= x
+            return a
+        if self.op == ',':  # Gets a list
+            return operands
+        if self.op == "&":
+            a = operands[0]
+            for x in operands[1:]:
+                a = a & x
+            return a
+        if self.op == "^":
+            a = operands[0]
+            for x in operands[1:]:
+                a = a ^ x
+            return a
+        if self.op == "%":
+            a = operands[0]
+            for x in operands[1:]:
+                a = a % x
+            return a
+
+        if self.op == "//":
+            den = 1
+            for x in operands:
+                den *= x
+            div = 0
+            for i, p in enumerate(operands):
+                m = 1
+                for j, q in enumerate(operands):
+                    if j != i:
+                        m *= q
+                div += m
+            return den/div
+        if self.op == "**":
+            # Power of power is always made on the first operand. X^Y^Z = (X^Y)^Z = X^(Y*Z)
+            if len(operands) > 2:
+                exponent = 1
+                for x in operands[1:]:
+                    exponent *= x
+                return operands[0] ** exponent
+            else:
+                return operands[0] ** operands[1]
+        if self.op == "apply_pct" and len(operands) == 2:
+            return operands[0] * (1 + operands[1])
+
+        raise NotImplementedError(f"Operation {self.op} not implemented")
+
+
 
 
 class Parser:
@@ -63,7 +160,6 @@ class Parser:
                  'log': math.log, 'ln': math.log, 'log10': math.log10,
                  'sqr': math.sqrt, 'sqrt': math.sqrt, 'factorial': math.factorial,
                  'abs': abs, 'round': round, 'floor': math.floor, 'ceil': math.ceil,
-                 'pct': pct, 'apply_pct': apply_pct,
                  }
 
     def __init__(self, expression: str):
@@ -216,10 +312,19 @@ class Parser:
 def evaluate(equation: str, environment: dict = None):
     parser = Parser(equation)
     ast = parser.parse()
-    env = {}
-    env.update(Parser.FUNCTIONS)
-    env.update(environment)
-    return eval(str(ast), env), ast
+    if isinstance(ast, Node):
+        result = ast.eval(environment)
+    else:
+        result = ast
+    return result, ast
+
+# def evaluate_old(equation: str, environment: dict = None):
+#     parser = Parser(equation)
+#     ast = parser.parse()
+#     env = {}
+#     env.update(Parser.FUNCTIONS)
+#     env.update(environment)
+#     return eval(str(ast), env), ast
 
 
 if __name__ == "__main__":

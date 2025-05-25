@@ -6,27 +6,65 @@ from math import atan2, degrees
 try:
     import pyperclip
 except ImportError:
-    pyperclip = None
+
+    try:
+        import clipboard
+    except ImportError:
+        import sys
+        def copy_to_clipboard(text):
+            if sys.platform.startswith("win"):
+                command = f'echo {text.strip()} | clip'
+            elif sys.platform.startswith("darwin"):
+                command = f'echo "{text.strip()}" | pbcopy'
+            elif sys.platform.startswith("linux"):
+                command = f'echo "{text.strip()}" | xclip -selection clipboard'
+            else:
+                raise RuntimeError("Unsupported operating system")
+
+            os.system(command)
+
+        def paste_from_clipboard():
+            if sys.platform.startswith("win"):
+                return os.popen("powershell Get-Clipboard").read().strip()
+            elif sys.platform.startswith("darwin"):
+                return os.popen("pbpaste").read().strip()
+            elif sys.platform.startswith("linux"):
+                return os.popen("xclip -selection clipboard -o").read().strip()
+            else:
+                raise RuntimeError("Unsupported operating system")
+    else:
+        copy_to_clipboard = clipboard.copy
+        paste_from_clipboard = clipboard.paste
+
+else:
+    copy_to_clipboard = pyperclip.copy
+    paste_from_clipboard = pyperclip.paste
 
 import math_parser
 
-x = None
 
-if pyperclip is not None:
-    try:
-        x = float(pyperclip.paste())
-    except ValueError:
-        pass
+variables = {}
 
 xFilePath = os.environ['TMP'] + os.sep + "wox_pycalc_x.txt"
 
-if x is None:
-    if os.path.exists(xFilePath):
-        try:
-            with open(xFilePath, "r") as xFile:
-                x = float(xFile.read())
-        except:
-            x = 0
+try:
+    with open(xFilePath, "r") as xFile:
+        for line in xFile.readlines():
+            try:
+                varname, varvalue = line.split('=', 2)
+            except:
+                pass
+            else:
+                variables[varname.strip()] = math_parser.number(varvalue.strip())
+except:
+    pass
+
+try:
+    x = math_parser.number(paste_from_clipboard())
+except:
+    pass
+else:
+    variables['x'] = x
 
 
 # TODO: Implement storing of variables. Eliminates = operators
@@ -34,12 +72,11 @@ if x is None:
 # TODO: Implement the XOR operator that existed on previous version
 # TODO: Storing configurations such as formatting precision, preferred copy to clipboard format
 
-def write_to_x(result):
-    global x
-    x = result
+def write_to_file(variables2store):
     try:
         with open(xFilePath, "w") as xFile:
-            xFile.write(result)
+            for varname, varvalue in variables2store.items():
+                xFile.write(f"{varname}={varvalue}\n")
     except:
         pass
 
@@ -47,10 +84,11 @@ def write_to_x(result):
 def to_eng(value):
     e = 0
     p = 1
-    while p < value:
+    avalue = abs(value)
+    while p < avalue:
         e += 1
         p *= 1000
-    while p > value:
+    while p > avalue:
         e -= 1
         p /= 1000
     if -5 <= e < 0:
@@ -104,8 +142,15 @@ def format_result(result):
 
 def calculate(query):
     results = []
+    try_vardef = query.split('=', 2)
+    if len(try_vardef) == 2:
+        vardef = try_vardef[0].strip()
+        query = try_vardef[1]
+    else:
+        vardef = None
+
     try:
-        result, expression = math_parser.evaluate(query, {'x': x})
+        result, expression = math_parser.evaluate(query, variables)
     except NameError or SyntaxError:
         pass
     except Exception as err:
@@ -116,6 +161,19 @@ def calculate(query):
             "IcoPath": "icons/app.png",
         })
     else:
+        if vardef:
+            fmt = format_result(result)
+            results.append({
+                "Title": f"{vardef} := {fmt}",
+                "SubTitle": f'{expression} = {fmt}',
+                "IcoPath": "icons/app.png",
+                "ContextData": result,
+                "JsonRPCAction": {
+                    'method': 'store_result',
+                    'parameters': [vardef, str(result)],
+                    'dontHideAfterAction': True
+                }
+            })
         if isinstance(result, float):
             fmt = f"{result:,}".replace(',', ' ')
             eng_repr = to_eng(result)
@@ -125,8 +183,8 @@ def calculate(query):
                 "IcoPath": "icons/app.png",
                 "ContextData": result,
                 "JsonRPCAction": {
-                    'method': 'change_query',
-                    'parameters': [str(result)],
+                    'method': 'store_result',
+                    'parameters': ['x', str(result)],
                     'dontHideAfterAction': True
                 }
             })
@@ -138,8 +196,8 @@ def calculate(query):
                 "IcoPath": "icons/app.png",
                 "ContextData": result,
                 "JsonRPCAction": {
-                    'method': 'change_query',
-                    'parameters': [str(result)],
+                    'method': 'store_result',
+                    'parameters': ['x', str(result)],
                     'dontHideAfterAction': True
                 }
             })
@@ -151,8 +209,8 @@ def calculate(query):
                 "IcoPath": "icons/app.png",
                 "ContextData": complex_repr,
                 "JsonRPCAction": {
-                    'method': 'change_query',
-                    'parameters': [complex_repr],
+                    'method': 'store_result',
+                    'parameters': ['x', complex_repr],
                     'dontHideAfterAction': True
                 }
             })
@@ -164,9 +222,21 @@ def calculate(query):
                 "SubTitle": f'{complex_repr} = {complex_repr1}',
                 "IcoPath": "icons/clip.png",
                 "JsonRPCAction": {
-                    'method': 'copy_to_clipboard',
-                    'parameters': [complex_repr1],
+                    'method': 'store_result',
+                    'parameters': ['x', complex_repr1],
                     'dontHideAfterAction': False
+                }
+            })
+        elif isinstance(result, str):
+            results.append({
+                "Title": result,
+                "SubTitle": f'{expression} = {result}',
+                "IcoPath": "icons/app.png",
+                "ContextData": result,
+                "JsonRPCAction": {
+                    'method': 'change_query',
+                    'parameters': [result],
+                    'dontHideAfterAction': True
                 }
             })
         else:
@@ -176,7 +246,6 @@ def calculate(query):
                 "IcoPath": "icons/app.png",
                 "ContextData": result
             })
-
     return results
 
 
@@ -317,24 +386,16 @@ class Calculator(Wox):
     def change_query(self, query):
         # change query and copy to clipboard after pressing enter
         WoxAPI.change_query(query)
-        write_to_x(query)
-        self.copy_to_clipboard(query)
+        write_to_file(variables)
+        copy_to_clipboard(query)
 
     def change_query_method(self, query):
         WoxAPI.change_query(query + '(')
 
-    def store_result(self, query, result):
-        WoxAPI.change_query(query)
-        write_to_x(result)
-        self.copy_to_clipboard(result)
-
-    def copy_to_clipboard(self, text):
-        if pyperclip is not None:
-            pyperclip.copy(text)
-        else:
-            # Workaround
-            cmd = 'echo ' + text.strip() + '| clip'
-            os.system(cmd)
+    def store_result(self, vardef, result):
+        variables[vardef] = result
+        write_to_file(variables)
+        copy_to_clipboard(result)
 
 
 if __name__ == '__main__':

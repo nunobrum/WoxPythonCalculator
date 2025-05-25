@@ -1,15 +1,23 @@
 import unittest
 import math
 
+import main
+import math_parser
 from math_parser import Parser, Node  # Replace with the actual module name
 
 
-class TestMathExpressionParser(unittest.TestCase):
+class TestMathExpressionEval(unittest.TestCase):
     
     def _test_parser(self, expression, result):
         parser = Parser(expression)
         new_expression = parser.parse()
-        self.assertEqual(result, str(new_expression))
+        env = Parser.FUNCTIONS
+        a = eval(result, env)
+        if isinstance(new_expression, Node):
+            b = new_expression.eval(env)
+        else:
+            b = new_expression
+        self.assertEqual(a, b, expression)
 
     def test_basic_operations(self):
         self._test_parser("2 + 3", "(2 + 3)")
@@ -84,6 +92,20 @@ class TestMathExpressionParser(unittest.TestCase):
         self._test_parser("5&1", "(5 & 1)")
         self._test_parser("5^^1", "(5 ^ 1)")
         self._test_parser("1+5&1", "(1 + (5 & 1))")
+
+
+class TestCalculate(unittest.TestCase):
+
+    def test_variables(self):
+        vars = {'a': 5, 'b': 2}
+        result, _ = math_parser.evaluate("a+b", vars)
+        self.assertEqual(7, result)
+        result, _ = math_parser.evaluate("a-b", vars)
+        self.assertEqual(3, result)
+        result, _ = math_parser.evaluate("a*b", vars)
+        self.assertEqual(10, result)
+        result, _ = math_parser.evaluate("b-a", vars)
+        self.assertEqual(-3, result)
 
 
 if __name__ == "__main__":
