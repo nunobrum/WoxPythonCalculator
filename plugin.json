@@ -1,12 +1,12 @@
 {
-    "ID":"a246dac93d45486f96b985669557846c",
+    "ID":"5d4bb5daf6d44cbe909bcfe99cdf65e9",
     "ActionKeyword":"*",
-    "Name":"Python Calculator",
+    "Name":"Engineering Calculator",
     "Description":"Advanced calculator with formatting and autocomplete",
-    "Author":"RomanKornev",
-    "Version":"1.1.2",
+    "Author":"Nuno Brum",
+    "Version":"0.1.0",
     "Language":"python",
-    "Website":"https://github.com/RomanKornev/Calculator",
+    "Website":"https://github.com/nunobrum/WoxPythonCalculator",
     "IcoPath":"icons\\app.png",
     "ExecuteFileName":"main.py"
 }

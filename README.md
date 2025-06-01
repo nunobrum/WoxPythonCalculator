@@ -1,7 +1,7 @@
 # Calculator
-Advanced calculator plugin for [Wox](http://www.getwox.com/).
+Engineering calculator plugin for [Wox](http://www.getwox.com/).
 
-Uses functions from ```math``` module and ```scipy.special``` (if installed).
+Uses functions from ```math``` module
 
 ![Calculator](http://i.imgur.com/nUztl4X.png)
 
@@ -35,11 +35,6 @@ Supported features:
 To install the plugin, type in Wox:
 ```
 wpm install Python Calculator
-```
-
-Install ```scipy``` to enable advanced calculations:
-```
-pip install scipy
 ```
 
 ## Notes
