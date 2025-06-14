@@ -106,6 +106,8 @@ class TestCalculate(unittest.TestCase):
         self.assertEqual(10, result)
         result, _ = math_parser.evaluate("b-a", vars)
         self.assertEqual(-3, result)
+        result, _ = math_parser.evaluate("5/7.5", {})
+        self.assertAlmostEqual(0.6666666666, result, 6)
 
 
 if __name__ == "__main__":

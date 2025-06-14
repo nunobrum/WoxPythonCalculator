@@ -188,7 +188,8 @@ class Parser:
                 value, prefix = float(t[:-1]), t[-1]
                 processed_tokens.append(value * self.ENGINEERING_PREFIXES[prefix])
             elif re.match(r'\d*\.?\d+(?:[eE][+-]?\d+)?$', t):
-                processed_tokens.append(t)
+                value = float(t)
+                processed_tokens.append(value)
             else:
                 if i > 0 and isinstance(processed_tokens[-1], (int, float)):  # numbers before functions taken as *
                     processed_tokens.append("*")
